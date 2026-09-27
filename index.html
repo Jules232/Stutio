@@ -15,9 +15,11 @@
             font-family: 'Inter', sans-serif;
             background-color: #050505;
             color: #ffffff;
-            overflow: hidden; /* Prevent scrolling, full app feel */
+            overflow-x: hidden;
+            overflow-y: auto;
             margin: 0;
             padding: 0;
+            min-height: 100dvh;
         }
 
         /* Glassmorphism utilities */
@@ -25,7 +27,7 @@
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
         }
 
@@ -82,103 +84,201 @@
 
         canvas {
             display: block;
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
+            width: 100vw;
+            height: 100vh;
             z-index: 0;
             pointer-events: none; /* Let clicks pass through to the UI */
         }
+
+        /* Smooth collapse for effect sliders */
+        .effect-slider-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin-top 0.3s ease-out;
+            opacity: 0;
+        }
+        .effect-slider-container.open {
+            max-height: 80px;
+            opacity: 1;
+            margin-top: 0.75rem;
+        }
     </style>
 </head>
-<body class="antialiased min-h-screen flex items-center justify-center relative">
+<body class="antialiased min-h-[100dvh] flex items-center justify-center relative py-6 px-3 sm:px-6">
 
     <canvas id="visualizerCanvas"></canvas>
 
-    <div class="relative z-10 w-full max-w-lg p-6 glass-panel rounded-3xl mx-4 flex flex-col gap-8 transition-all duration-500 hover:border-white/10">
+    <div class="relative z-10 w-full max-w-2xl p-4 sm:p-7 glass-panel rounded-3xl flex flex-col gap-6 my-auto shadow-2xl transition-all duration-300">
         
         <!-- Header -->
         <div class="text-center">
-            <h1 class="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-500 flex items-center justify-center gap-2">
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-blue-500 flex items-center justify-center gap-2">
                 <i class="ph-fill ph-waveform text-purple-400"></i> StellarStudio
             </h1>
-            <p class="text-gray-400 text-sm mt-1">Créez. Effets. Magie.</p>
+            <p class="text-gray-400 text-xs sm:text-sm mt-1">Studio de Création Audio Rapide & Intuitif</p>
         </div>
 
         <!-- Recording Section -->
-        <div class="flex flex-col items-center justify-center gap-4 py-4">
-            <button id="recordBtn" class="w-24 h-24 rounded-full bg-red-500/20 text-red-500 border-2 border-red-500 flex items-center justify-center text-4xl transition-all duration-300 hover:bg-red-500/40 focus:outline-none shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+        <div class="flex flex-col items-center justify-center gap-3 py-2">
+            <button id="recordBtn" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-red-500/20 text-red-500 border-2 border-red-500 flex items-center justify-center text-3xl sm:text-4xl transition-all duration-300 hover:bg-red-500/40 focus:outline-none shadow-[0_0_20px_rgba(239,68,68,0.3)] active:scale-95">
                 <i class="ph-fill ph-microphone"></i>
             </button>
-            <span id="recordStatus" class="text-sm text-red-400 font-medium tracking-widest uppercase">Prêt à enregistrer</span>
+            <span id="recordStatus" class="text-xs sm:text-sm text-red-400 font-medium tracking-widest uppercase">Prêt à enregistrer</span>
         </div>
 
-        <!-- Playback & Effects Controls (Hidden initially) -->
-        <div id="controlsPanel" class="flex flex-col gap-6 opacity-30 pointer-events-none transition-opacity duration-500">
+        <!-- Playback & Effects Controls -->
+        <div id="controlsPanel" class="flex flex-col gap-5 opacity-30 pointer-events-none transition-opacity duration-500">
             
-            <!-- Playback Controls -->
-            <div class="flex items-center justify-between bg-white/5 rounded-2xl p-4 border border-white/5">
-                <button id="playBtn" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-xl hover:bg-white/20 transition text-white">
-                    <i class="ph-fill ph-play"></i>
-                </button>
-                <div class="flex items-center gap-3">
-                    <span class="text-sm font-semibold text-gray-300">Boucle (Loop)</span>
-                    <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                        <input type="checkbox" name="toggle" id="loopToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out"/>
-                        <label for="loopToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer transition-colors duration-200 ease-in-out"></label>
+            <!-- Playback & Master Volume Bar -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/5 gap-3">
+                <div class="flex items-center justify-between sm:justify-start gap-3">
+                    <button id="playBtn" class="w-11 h-11 rounded-full bg-purple-500/80 flex items-center justify-center text-xl hover:bg-purple-500 transition text-white shadow-lg active:scale-95">
+                        <i class="ph-fill ph-play"></i>
+                    </button>
+                    <button id="downloadBtn" title="Télécharger l'enregistrement" class="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center text-lg hover:bg-white/20 transition text-gray-200 active:scale-95">
+                        <i class="ph ph-download-simple"></i>
+                    </button>
+                    <div class="flex items-center gap-2 pl-2">
+                        <span class="text-xs sm:text-sm font-semibold text-gray-300">Boucle</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" name="toggle" id="loopToggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out"/>
+                            <label for="loopToggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-600 cursor-pointer transition-colors duration-200"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Master Volume Slider with Gain Boost -->
+                <div class="flex items-center gap-2 bg-black/30 px-3 py-2 rounded-xl border border-white/5">
+                    <i class="ph ph-speaker-high text-purple-400 text-lg"></i>
+                    <div class="flex flex-col w-full min-w-[110px]">
+                        <div class="flex justify-between text-[11px] text-gray-400 mb-1">
+                            <span>Volume Général</span>
+                            <span id="volumeValue" class="font-bold text-purple-300">100%</span>
+                        </div>
+                        <input type="range" id="masterVolumeSlider" min="0" max="2" step="0.05" value="1">
                     </div>
                 </div>
             </div>
 
-            <!-- Effects Grid -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <!-- Effects Grid with Dynamic Intensity Sliders -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <!-- Echo Effect -->
-                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/5 transition group" id="echoBtn">
-                    <i class="ph ph-waves text-3xl text-gray-400 group-hover:text-blue-400 transition"></i>
-                    <span class="text-sm font-medium text-gray-300">Écho Spatial</span>
-                    <div class="w-2 h-2 rounded-full bg-gray-600 indicator transition-colors"></div>
+                <div class="glass-panel p-3.5 rounded-2xl flex flex-col justify-between hover:bg-white/5 transition group border border-white/5" id="echoBtn">
+                    <div class="flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="ph ph-waves text-2xl text-gray-400 group-hover:text-blue-400 transition"></i>
+                            <span class="text-xs sm:text-sm font-medium text-gray-200">Écho Spatial</span>
+                        </div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-gray-600 indicator transition-colors"></div>
+                    </div>
+                    <div class="effect-slider-container" id="echoSliderContainer">
+                        <div class="flex justify-between text-[10px] text-blue-300 mb-1">
+                            <span>Puissance Écho</span>
+                            <span id="echoValue">50%</span>
+                        </div>
+                        <input type="range" id="echoIntensity" min="0.1" max="0.9" step="0.05" value="0.5">
+                    </div>
                 </div>
 
                 <!-- Autotune Effect -->
-                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/5 transition group" id="autotuneBtn">
-                    <i class="ph ph-magic-wand text-3xl text-gray-400 group-hover:text-purple-400 transition"></i>
-                    <span class="text-sm font-medium text-gray-300">Effet Robotique</span>
-                    <div class="w-2 h-2 rounded-full bg-gray-600 indicator transition-colors"></div>
+                <div class="glass-panel p-3.5 rounded-2xl flex flex-col justify-between hover:bg-white/5 transition group border border-white/5" id="autotuneBtn">
+                    <div class="flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="ph ph-magic-wand text-2xl text-gray-400 group-hover:text-purple-400 transition"></i>
+                            <span class="text-xs sm:text-sm font-medium text-gray-200">Effet Robotique</span>
+                        </div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-gray-600 indicator transition-colors"></div>
+                    </div>
+                    <div class="effect-slider-container" id="autotuneSliderContainer">
+                        <div class="flex justify-between text-[10px] text-purple-300 mb-1">
+                            <span>Tonalité Pitch</span>
+                            <span id="autotuneValue">+4 st</span>
+                        </div>
+                        <input type="range" id="autotuneIntensity" min="1" max="12" step="1" value="4">
+                    </div>
                 </div>
 
                 <!-- Canon Effect -->
-                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/5 transition group" id="canonBtn">
-                    <i class="ph ph-users text-3xl text-gray-400 group-hover:text-pink-400 transition"></i>
-                    <span class="text-sm font-medium text-gray-300 text-center">Voix Canon</span>
-                    <div class="w-2 h-2 rounded-full bg-gray-600 indicator transition-colors"></div>
+                <div class="glass-panel p-3.5 rounded-2xl flex flex-col justify-between hover:bg-white/5 transition group border border-white/5" id="canonBtn">
+                    <div class="flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="ph ph-users text-2xl text-gray-400 group-hover:text-pink-400 transition"></i>
+                            <span class="text-xs sm:text-sm font-medium text-gray-200">Voix Canon</span>
+                        </div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-gray-600 indicator transition-colors"></div>
+                    </div>
+                    <div class="effect-slider-container" id="canonSliderContainer">
+                        <div class="flex justify-between text-[10px] text-pink-300 mb-1">
+                            <span>Intensité Canon</span>
+                            <span id="canonValue">70%</span>
+                        </div>
+                        <input type="range" id="canonIntensity" min="0.2" max="1.5" step="0.1" value="0.7">
+                    </div>
                 </div>
                 
                 <!-- Deep Voice -->
-                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/5 transition group" id="deepBtn">
-                    <i class="ph ph-user-minus text-3xl text-gray-400 group-hover:text-emerald-400 transition"></i>
-                    <span class="text-sm font-medium text-gray-300">Voix Grave</span>
-                    <div class="w-2 h-2 rounded-full bg-gray-600 indicator transition-colors"></div>
+                <div class="glass-panel p-3.5 rounded-2xl flex flex-col justify-between hover:bg-white/5 transition group border border-white/5" id="deepBtn">
+                    <div class="flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="ph ph-user-minus text-2xl text-gray-400 group-hover:text-emerald-400 transition"></i>
+                            <span class="text-xs sm:text-sm font-medium text-gray-200">Voix Grave</span>
+                        </div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-gray-600 indicator transition-colors"></div>
+                    </div>
+                    <div class="effect-slider-container" id="deepSliderContainer">
+                        <div class="flex justify-between text-[10px] text-emerald-300 mb-1">
+                            <span>Profondeur</span>
+                            <span id="deepValue">-10 st</span>
+                        </div>
+                        <input type="range" id="deepIntensity" min="-18" max="-2" step="1" value="-10">
+                    </div>
                 </div>
 
                 <!-- Lo-Fi Radio -->
-                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/5 transition group" id="lofiBtn">
-                    <i class="ph ph-radio text-3xl text-gray-400 group-hover:text-yellow-400 transition"></i>
-                    <span class="text-sm font-medium text-gray-300">Radio Lo-Fi</span>
-                    <div class="w-2 h-2 rounded-full bg-gray-600 indicator transition-colors"></div>
+                <div class="glass-panel p-3.5 rounded-2xl flex flex-col justify-between hover:bg-white/5 transition group border border-white/5" id="lofiBtn">
+                    <div class="flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="ph ph-radio text-2xl text-gray-400 group-hover:text-yellow-400 transition"></i>
+                            <span class="text-xs sm:text-sm font-medium text-gray-200">Radio Lo-Fi</span>
+                        </div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-gray-600 indicator transition-colors"></div>
+                    </div>
+                    <div class="effect-slider-container" id="lofiSliderContainer">
+                        <div class="flex justify-between text-[10px] text-yellow-300 mb-1">
+                            <span>Filtre Grain</span>
+                            <span id="lofiValue">3 bits</span>
+                        </div>
+                        <input type="range" id="lofiIntensity" min="1" max="8" step="1" value="3">
+                    </div>
                 </div>
                 
                 <!-- Alien -->
-                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/5 transition group" id="alienBtn">
-                    <i class="ph ph-alien text-3xl text-gray-400 group-hover:text-green-400 transition"></i>
-                    <span class="text-sm font-medium text-gray-300">Extraterrestre</span>
-                    <div class="w-2 h-2 rounded-full bg-gray-600 indicator transition-colors"></div>
+                <div class="glass-panel p-3.5 rounded-2xl flex flex-col justify-between hover:bg-white/5 transition group border border-white/5" id="alienBtn">
+                    <div class="flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <i class="ph ph-alien text-2xl text-gray-400 group-hover:text-green-400 transition"></i>
+                            <span class="text-xs sm:text-sm font-medium text-gray-200">Extraterrestre</span>
+                        </div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-gray-600 indicator transition-colors"></div>
+                    </div>
+                    <div class="effect-slider-container" id="alienSliderContainer">
+                        <div class="flex justify-between text-[10px] text-green-300 mb-1">
+                            <span>Modulation</span>
+                            <span id="alienValue">80%</span>
+                        </div>
+                        <input type="range" id="alienIntensity" min="0.2" max="2" step="0.1" value="0.8">
+                    </div>
                 </div>
             </div>
 
             <!-- Speed/Duration Slider -->
-            <div class="glass-panel p-4 rounded-2xl">
+            <div class="glass-panel p-3.5 rounded-2xl border border-white/5">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-sm font-medium text-gray-300 flex items-center gap-2">
-                        <i class="ph ph-clock text-lg"></i> Durée / Vitesse
+                    <span class="text-xs sm:text-sm font-medium text-gray-300 flex items-center gap-2">
+                        <i class="ph ph-clock text-lg text-purple-400"></i> Vitesse / Durée de Lecture
                     </span>
                     <span id="speedValue" class="text-xs text-purple-400 font-bold">1.0x</span>
                 </div>
@@ -193,6 +293,7 @@
         let isRecording = false;
         let isPlaying = false;
         let audioContextStarted = false;
+        let recordedBlob = null;
 
         // Tone.js nodes
         let mic;
@@ -202,7 +303,7 @@
         
         // Effects nodes
         let echoEffect;
-        let autotuneEffect; // We'll use a pitch shift + subtle chorus for a robotic/tuned feel
+        let autotuneEffect;
         let reverbEffect;
         let masterGain;
         
@@ -211,16 +312,23 @@
         let lofiEffect;
         let alienEffect;
 
-        // Effect States
+        // Effect States & Intensities
         let state = {
             echo: false,
+            echoIntensity: 0.5,
             autotune: false,
+            autotuneIntensity: 4,
             loop: false,
             speed: 1.0,
             canon: false,
+            canonIntensity: 0.7,
             deep: false,
+            deepIntensity: -10,
             lofi: false,
-            alien: false
+            lofiIntensity: 3,
+            alien: false,
+            alienIntensity: 0.8,
+            masterVolume: 1.0
         };
 
         // UI Elements
@@ -228,13 +336,36 @@
         const recordStatus = document.getElementById('recordStatus');
         const controlsPanel = document.getElementById('controlsPanel');
         const playBtn = document.getElementById('playBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
         const loopToggle = document.getElementById('loopToggle');
+        const masterVolumeSlider = document.getElementById('masterVolumeSlider');
+        const volumeValue = document.getElementById('volumeValue');
+
+        // Effect UI Elements
         const echoBtn = document.getElementById('echoBtn');
+        const echoIntensity = document.getElementById('echoIntensity');
+        const echoValue = document.getElementById('echoValue');
+
         const autotuneBtn = document.getElementById('autotuneBtn');
+        const autotuneIntensity = document.getElementById('autotuneIntensity');
+        const autotuneValue = document.getElementById('autotuneValue');
+
         const canonBtn = document.getElementById('canonBtn');
+        const canonIntensity = document.getElementById('canonIntensity');
+        const canonValue = document.getElementById('canonValue');
+
         const deepBtn = document.getElementById('deepBtn');
+        const deepIntensity = document.getElementById('deepIntensity');
+        const deepValue = document.getElementById('deepValue');
+
         const lofiBtn = document.getElementById('lofiBtn');
+        const lofiIntensity = document.getElementById('lofiIntensity');
+        const lofiValue = document.getElementById('lofiValue');
+
         const alienBtn = document.getElementById('alienBtn');
+        const alienIntensity = document.getElementById('alienIntensity');
+        const alienValue = document.getElementById('alienValue');
+
         const speedSlider = document.getElementById('speedSlider');
         const speedValue = document.getElementById('speedValue');
 
@@ -249,36 +380,35 @@
             mic = new Tone.UserMedia();
             recorder = new Tone.Recorder();
             
-            // Visualizer Analyzer (connects to both mic and player)
+            // Visualizer Analyzer
             analyser = new Tone.Analyser("waveform", 512);
-            masterGain = new Tone.Gain(1).toDestination();
+            masterGain = new Tone.Gain(state.masterVolume).toDestination();
             masterGain.connect(analyser);
 
             mic.connect(recorder);
             mic.connect(analyser); // Visualize mic input while recording
 
-            // Player (will be initialized when we have a recording)
+            // Player
             player = new Tone.Player();
             player.loop = state.loop;
 
-            // Effects
-            echoEffect = new Tone.FeedbackDelay("8n", 0.5);
-            reverbEffect = new Tone.Reverb(2.5); // Add space
+            // Effects Nodes Setup
+            echoEffect = new Tone.FeedbackDelay("8n", state.echoIntensity);
+            reverbEffect = new Tone.Reverb(2.5);
             
-            // "Autotune" simulation (Robotic/Hyperpop feel)
             autotuneEffect = new Tone.PitchShift({
-                pitch: 4, // Shift up 4 semitones for a distinct effect
+                pitch: state.autotuneIntensity,
                 windowSize: 0.05
             });
 
-            // Canon setup (Multiple parallel delays)
-            canonIn = new Tone.Gain(1);
+            // Canon setup
+            canonIn = new Tone.Gain(state.canonIntensity);
             canonOut = new Tone.Gain(1);
-            canonDelay1 = new Tone.Delay(0.7); // 0.7 sec
-            canonDelay2 = new Tone.Delay(1.4); // 1.4 sec
-            canonDelay3 = new Tone.Delay(2.1); // 2.1 sec
+            canonDelay1 = new Tone.Delay(0.5);
+            canonDelay2 = new Tone.Delay(1.0);
+            canonDelay3 = new Tone.Delay(1.5);
             
-            canonIn.connect(canonOut); // Dry signal
+            canonIn.connect(canonOut);
             canonIn.connect(canonDelay1);
             canonDelay1.connect(canonOut);
             canonIn.connect(canonDelay2);
@@ -286,16 +416,15 @@
             canonIn.connect(canonDelay3);
             canonDelay3.connect(canonOut);
 
-            // New effects
-            deepEffect = new Tone.PitchShift(-10); // Voix Grave
-            lofiEffect = new Tone.BitCrusher(3); // Bitcrusher pour Radio
-            alienEffect = new Tone.Chorus(4, 2.5, 1).start(); // Chorus bizarre
+            deepEffect = new Tone.PitchShift(state.deepIntensity);
+            lofiEffect = new Tone.BitCrusher(state.lofiIntensity);
+            alienEffect = new Tone.Chorus(4, 2.5, state.alienIntensity).start();
 
             // Initial Routing: Player -> Master
             player.connect(masterGain);
         }
 
-        // --- 3. DYNAMIC ROUTING ---
+        // --- 3. DYNAMIC ROUTING & INTENSITY UPDATE ---
         function updateAudioRouting() {
             if (!player) return;
             
@@ -303,44 +432,48 @@
             let currentNode = player;
 
             if (state.autotune) {
+                autotuneEffect.pitch = state.autotuneIntensity;
                 currentNode.connect(autotuneEffect);
                 currentNode = autotuneEffect;
-                currentNode.disconnect(); // clean up chain before proceeding
+                currentNode.disconnect();
             }
 
             if (state.echo) {
+                echoEffect.feedback.value = state.echoIntensity;
                 currentNode.connect(echoEffect);
                 currentNode = echoEffect;
                 currentNode.disconnect();
-                
-                // Add reverb to echo for lushness
                 currentNode.connect(reverbEffect);
                 currentNode = reverbEffect;
                 currentNode.disconnect();
             }
 
             if (state.deep) {
+                deepEffect.pitch = state.deepIntensity;
                 currentNode.connect(deepEffect);
                 currentNode = deepEffect;
                 currentNode.disconnect();
             }
 
             if (state.alien) {
+                alienEffect.depth = state.alienIntensity;
                 currentNode.connect(alienEffect);
                 currentNode = alienEffect;
                 currentNode.disconnect();
             }
 
             if (state.lofi) {
+                lofiEffect.bits = state.lofiIntensity;
                 currentNode.connect(lofiEffect);
                 currentNode = lofiEffect;
                 currentNode.disconnect();
             }
 
             if (state.canon) {
+                canonIn.gain.value = state.canonIntensity;
                 currentNode.connect(canonIn);
                 currentNode = canonOut;
-                currentNode.disconnect(); // Disconnect canonOut from previous mappings
+                currentNode.disconnect();
             }
 
             currentNode.connect(masterGain);
@@ -348,21 +481,29 @@
 
         // --- 4. EVENT LISTENERS ---
 
+        // Master Volume
+        masterVolumeSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            state.masterVolume = val;
+            volumeValue.innerText = Math.round(val * 100) + '%';
+            if (masterGain) {
+                masterGain.gain.rampTo(val, 0.05);
+            }
+        });
+
         // Record Button
         recordBtn.addEventListener('click', async () => {
             if (!audioContextStarted) await setupAudio();
 
             if (!isRecording) {
-                // Start Recording
                 try {
                     await mic.open();
                     recorder.start();
                     isRecording = true;
                     
-                    // UI Update
                     recordBtn.classList.add('recording-pulse', 'bg-red-500', 'text-white');
                     recordBtn.classList.remove('bg-red-500/20', 'text-red-500');
-                    recordBtn.innerHTML = '<i class="ph-fill ph-stop text-4xl"></i>';
+                    recordBtn.innerHTML = '<i class="ph-fill ph-stop text-3xl sm:text-4xl"></i>';
                     recordStatus.innerText = "Enregistrement en cours...";
                     controlsPanel.classList.add('opacity-30', 'pointer-events-none');
                     controlsPanel.classList.remove('opacity-100', 'pointer-events-auto');
@@ -370,24 +511,21 @@
                     if (isPlaying) stopPlayback();
 
                 } catch (e) {
-                    alert("Accès au microphone refusé ou erreur.");
+                    alert("Accès au microphone refusé ou non supporté.");
                     console.error(e);
                 }
             } else {
-                // Stop Recording
-                const recordingBlob = await recorder.stop();
+                recordedBlob = await recorder.stop();
                 mic.close();
                 isRecording = false;
 
-                // Load recording into player
-                const recordingUrl = URL.createObjectURL(recordingBlob);
+                const recordingUrl = URL.createObjectURL(recordedBlob);
                 await player.load(recordingUrl);
 
-                // UI Update
                 recordBtn.classList.remove('recording-pulse', 'bg-red-500', 'text-white');
                 recordBtn.classList.add('bg-red-500/20', 'text-red-500');
-                recordBtn.innerHTML = '<i class="ph-fill ph-microphone text-4xl"></i>';
-                recordStatus.innerText = "Nouvel enregistrement terminé";
+                recordBtn.innerHTML = '<i class="ph-fill ph-microphone text-3xl sm:text-4xl"></i>';
+                recordStatus.innerText = "Enregistrement prêt !";
                 recordStatus.classList.replace('text-red-400', 'text-green-400');
                 
                 controlsPanel.classList.remove('opacity-30', 'pointer-events-none');
@@ -405,11 +543,9 @@
                 player.start();
                 isPlaying = true;
                 playBtn.innerHTML = '<i class="ph-fill ph-stop"></i>';
-                playBtn.classList.add('bg-purple-500/50', 'text-white', 'border-purple-500');
+                playBtn.classList.replace('bg-purple-500/80', 'bg-red-500/80');
                 
-                // If not looping, reset button when finished
                 if (!state.loop) {
-                    // Calculate duration based on playback rate
                     const dur = player.buffer.duration / player.playbackRate;
                     setTimeout(() => {
                         if (isPlaying && !state.loop) stopPlayback();
@@ -422,8 +558,20 @@
             if(player) player.stop();
             isPlaying = false;
             playBtn.innerHTML = '<i class="ph-fill ph-play"></i>';
-            playBtn.classList.remove('bg-purple-500/50', 'text-white', 'border-purple-500');
+            playBtn.classList.replace('bg-red-500/80', 'bg-purple-500/80');
         }
+
+        // Download Recording
+        downloadBtn.addEventListener('click', () => {
+            if (!recordedBlob) return;
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = URL.createObjectURL(recordedBlob);
+            a.download = `StellarStudio_Audio_${Date.now()}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => document.body.removeChild(a), 100);
+        });
 
         // Loop Toggle
         loopToggle.addEventListener('change', (e) => {
@@ -431,122 +579,77 @@
             if (player) player.loop = state.loop;
         });
 
-        // Echo Toggle
-        echoBtn.addEventListener('click', () => {
-            state.echo = !state.echo;
+        // Helper to handle Effect Toggle & Slider Container
+        function setupEffectToggle(cardEl, sliderContainerEl, stateKey, activeClass, textIconColor, shadowColor) {
+            cardEl.addEventListener('click', (e) => {
+                // Prevent toggle if user clicks directly on slider
+                if (e.target.tagName === 'INPUT') return;
+
+                state[stateKey] = !state[stateKey];
+                updateAudioRouting();
+                
+                const icon = cardEl.querySelector('i');
+                const indicator = cardEl.querySelector('.indicator');
+                
+                if (state[stateKey]) {
+                    cardEl.classList.add('border-' + activeClass + '-500/50', 'bg-' + activeClass + '-500/10');
+                    icon.classList.replace('text-gray-400', textIconColor);
+                    indicator.classList.replace('bg-gray-600', 'bg-' + activeClass + '-500');
+                    indicator.classList.add('shadow-[0_0_10px_' + shadowColor + ']');
+                    sliderContainerEl.classList.add('open');
+                } else {
+                    cardEl.classList.remove('border-' + activeClass + '-500/50', 'bg-' + activeClass + '-500/10');
+                    icon.classList.replace(textIconColor, 'text-gray-400');
+                    indicator.classList.replace('bg-' + activeClass + '-500', 'bg-gray-600');
+                    indicator.classList.remove('shadow-[0_0_10px_' + shadowColor + ']');
+                    sliderContainerEl.classList.remove('open');
+                }
+            });
+        }
+
+        // Setup Effect Toggles
+        setupEffectToggle(echoBtn, document.getElementById('echoSliderContainer'), 'echo', 'blue', 'text-blue-400', '#3b82f6');
+        setupEffectToggle(autotuneBtn, document.getElementById('autotuneSliderContainer'), 'autotune', 'purple', 'text-purple-400', '#a855f7');
+        setupEffectToggle(canonBtn, document.getElementById('canonSliderContainer'), 'canon', 'pink', 'text-pink-400', '#ec4899');
+        setupEffectToggle(deepBtn, document.getElementById('deepSliderContainer'), 'deep', 'emerald', 'text-emerald-400', '#10b981');
+        setupEffectToggle(lofiBtn, document.getElementById('lofiSliderContainer'), 'lofi', 'yellow', 'text-yellow-400', '#eab308');
+        setupEffectToggle(alienBtn, document.getElementById('alienSliderContainer'), 'alien', 'green', 'text-green-400', '#22c55e');
+
+        // Effect Intensity Sliders Event Listeners
+        echoIntensity.addEventListener('input', (e) => {
+            state.echoIntensity = parseFloat(e.target.value);
+            echoValue.innerText = Math.round(state.echoIntensity * 100) + '%';
             updateAudioRouting();
-            
-            const icon = echoBtn.querySelector('i');
-            const indicator = echoBtn.querySelector('.indicator');
-            
-            if (state.echo) {
-                echoBtn.classList.add('border-blue-500/50', 'bg-blue-500/10');
-                icon.classList.replace('text-gray-400', 'text-blue-400');
-                indicator.classList.replace('bg-gray-600', 'bg-blue-500');
-                indicator.classList.add('shadow-[0_0_10px_#3b82f6]');
-            } else {
-                echoBtn.classList.remove('border-blue-500/50', 'bg-blue-500/10');
-                icon.classList.replace('text-blue-400', 'text-gray-400');
-                indicator.classList.replace('bg-blue-500', 'bg-gray-600');
-                indicator.classList.remove('shadow-[0_0_10px_#3b82f6]');
-            }
         });
 
-        // Autotune Toggle
-        autotuneBtn.addEventListener('click', () => {
-            state.autotune = !state.autotune;
+        autotuneIntensity.addEventListener('input', (e) => {
+            state.autotuneIntensity = parseInt(e.target.value);
+            autotuneValue.innerText = '+' + state.autotuneIntensity + ' st';
             updateAudioRouting();
-            
-            const icon = autotuneBtn.querySelector('i');
-            const indicator = autotuneBtn.querySelector('.indicator');
-            
-            if (state.autotune) {
-                autotuneBtn.classList.add('border-purple-500/50', 'bg-purple-500/10');
-                icon.classList.replace('text-gray-400', 'text-purple-400');
-                indicator.classList.replace('bg-gray-600', 'bg-purple-500');
-                indicator.classList.add('shadow-[0_0_10px_#a855f7]');
-            } else {
-                autotuneBtn.classList.remove('border-purple-500/50', 'bg-purple-500/10');
-                icon.classList.replace('text-purple-400', 'text-gray-400');
-                indicator.classList.replace('bg-purple-500', 'bg-gray-600');
-                indicator.classList.remove('shadow-[0_0_10px_#a855f7]');
-            }
         });
 
-        // Canon Toggle
-        canonBtn.addEventListener('click', () => {
-            state.canon = !state.canon;
+        canonIntensity.addEventListener('input', (e) => {
+            state.canonIntensity = parseFloat(e.target.value);
+            canonValue.innerText = Math.round(state.canonIntensity * 100) + '%';
             updateAudioRouting();
-            const icon = canonBtn.querySelector('i');
-            const indicator = canonBtn.querySelector('.indicator');
-            if (state.canon) {
-                canonBtn.classList.add('border-pink-500/50', 'bg-pink-500/10');
-                icon.classList.replace('text-gray-400', 'text-pink-400');
-                indicator.classList.replace('bg-gray-600', 'bg-pink-500');
-                indicator.classList.add('shadow-[0_0_10px_#ec4899]');
-            } else {
-                canonBtn.classList.remove('border-pink-500/50', 'bg-pink-500/10');
-                icon.classList.replace('text-pink-400', 'text-gray-400');
-                indicator.classList.replace('bg-pink-500', 'bg-gray-600');
-                indicator.classList.remove('shadow-[0_0_10px_#ec4899]');
-            }
         });
 
-        // Deep Voice Toggle
-        deepBtn.addEventListener('click', () => {
-            state.deep = !state.deep;
+        deepIntensity.addEventListener('input', (e) => {
+            state.deepIntensity = parseInt(e.target.value);
+            deepValue.innerText = state.deepIntensity + ' st';
             updateAudioRouting();
-            const icon = deepBtn.querySelector('i');
-            const indicator = deepBtn.querySelector('.indicator');
-            if (state.deep) {
-                deepBtn.classList.add('border-emerald-500/50', 'bg-emerald-500/10');
-                icon.classList.replace('text-gray-400', 'text-emerald-400');
-                indicator.classList.replace('bg-gray-600', 'bg-emerald-500');
-                indicator.classList.add('shadow-[0_0_10px_#10b981]');
-            } else {
-                deepBtn.classList.remove('border-emerald-500/50', 'bg-emerald-500/10');
-                icon.classList.replace('text-emerald-400', 'text-gray-400');
-                indicator.classList.replace('bg-emerald-500', 'bg-gray-600');
-                indicator.classList.remove('shadow-[0_0_10px_#10b981]');
-            }
         });
 
-        // Lo-Fi Toggle
-        lofiBtn.addEventListener('click', () => {
-            state.lofi = !state.lofi;
+        lofiIntensity.addEventListener('input', (e) => {
+            state.lofiIntensity = parseInt(e.target.value);
+            lofiValue.innerText = state.lofiIntensity + ' bits';
             updateAudioRouting();
-            const icon = lofiBtn.querySelector('i');
-            const indicator = lofiBtn.querySelector('.indicator');
-            if (state.lofi) {
-                lofiBtn.classList.add('border-yellow-500/50', 'bg-yellow-500/10');
-                icon.classList.replace('text-gray-400', 'text-yellow-400');
-                indicator.classList.replace('bg-gray-600', 'bg-yellow-500');
-                indicator.classList.add('shadow-[0_0_10px_#eab308]');
-            } else {
-                lofiBtn.classList.remove('border-yellow-500/50', 'bg-yellow-500/10');
-                icon.classList.replace('text-yellow-400', 'text-gray-400');
-                indicator.classList.replace('bg-yellow-500', 'bg-gray-600');
-                indicator.classList.remove('shadow-[0_0_10px_#eab308]');
-            }
         });
 
-        // Alien Toggle
-        alienBtn.addEventListener('click', () => {
-            state.alien = !state.alien;
+        alienIntensity.addEventListener('input', (e) => {
+            state.alienIntensity = parseFloat(e.target.value);
+            alienValue.innerText = Math.round(state.alienIntensity * 100) + '%';
             updateAudioRouting();
-            const icon = alienBtn.querySelector('i');
-            const indicator = alienBtn.querySelector('.indicator');
-            if (state.alien) {
-                alienBtn.classList.add('border-green-500/50', 'bg-green-500/10');
-                icon.classList.replace('text-gray-400', 'text-green-400');
-                indicator.classList.replace('bg-gray-600', 'bg-green-500');
-                indicator.classList.add('shadow-[0_0_10px_#22c55e]');
-            } else {
-                alienBtn.classList.remove('border-green-500/50', 'bg-green-500/10');
-                icon.classList.replace('text-green-400', 'text-gray-400');
-                indicator.classList.replace('bg-green-500', 'bg-gray-600');
-                indicator.classList.remove('shadow-[0_0_10px_#22c55e]');
-            }
         });
 
         // Speed Slider
@@ -559,21 +662,23 @@
             }
         });
 
-
+        // --- 5. VISUALIZER CANVAS (RESPONSIVE) ---
         const canvas = document.getElementById('visualizerCanvas');
         const ctx = canvas.getContext('2d');
         
         let width, height;
         let particles = [];
-        const PARTICLE_COUNT = 150;
+        const PARTICLE_COUNT = Math.min(120, Math.floor(window.innerWidth / 8));
 
         function resizeCanvas() {
             width = window.innerWidth;
             height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
+            canvas.width = width * window.devicePixelRatio;
+            canvas.height = height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
         }
         window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', resizeCanvas);
         resizeCanvas();
 
         class Particle {
@@ -586,30 +691,21 @@
                 this.alpha = this.baseAlpha;
                 this.vx = (Math.random() - 0.5) * 0.5;
                 this.vy = (Math.random() - 0.5) * 0.5;
-                // Color variation (white/blue/purple)
                 const colors = ['255,255,255', '168,85,247', '59,130,246'];
                 this.color = colors[Math.floor(Math.random() * colors.length)];
             }
 
             update(audioIntensity) {
-                // Move
                 this.x += this.vx;
                 this.y += this.vy;
 
-                // Wrap around
                 if (this.x < 0) this.x = width;
                 if (this.x > width) this.x = 0;
                 if (this.y < 0) this.y = height;
                 if (this.y > height) this.y = 0;
 
-                // React to audio
-                // Intensity is a value between 0 and 1
-                const boost = audioIntensity * 15; // Max radius increase
-                
-                // Smoothly interpolate radius for fluid animation
+                const boost = audioIntensity * 12;
                 this.radius += ((this.baseRadius + boost) - this.radius) * 0.2;
-                
-                // Brighten alpha based on audio
                 this.alpha = Math.min(1, this.baseAlpha + (audioIntensity * 0.8));
             }
 
@@ -617,39 +713,35 @@
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.fillStyle = `rgba(${this.color}, ${this.alpha})`;
-                ctx.shadowBlur = this.radius * 4;
+                ctx.shadowBlur = this.radius * 3;
                 ctx.shadowColor = `rgba(${this.color}, ${this.alpha})`;
                 ctx.fill();
-                ctx.shadowBlur = 0; // Reset for performance
+                ctx.shadowBlur = 0;
             }
         }
 
-        // Initialize particles
         for (let i = 0; i < PARTICLE_COUNT; i++) {
             particles.push(new Particle());
         }
 
         function getAudioIntensity() {
             if (!analyser) return 0;
-            const values = analyser.getValue(); // Float32Array
+            const values = analyser.getValue();
             let sum = 0;
             for (let i = 0; i < values.length; i++) {
                 sum += Math.abs(values[i]);
             }
             const average = sum / values.length;
-            // Map average (usually 0 to 0.5) to a 0-1 scale, adding a slight curve
             return Math.min(1, average * 3); 
         }
 
         function animate() {
-            // Dark trailing effect instead of clearRect
-            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; 
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.25)'; 
             ctx.fillRect(0, 0, width, height);
 
             const intensity = getAudioIntensity();
 
-            // Draw connecting lines if intensity is high enough (Star constellation effect)
-            if (intensity > 0.1) {
+            if (intensity > 0.08) {
                 ctx.lineWidth = 0.5;
                 for (let i = 0; i < particles.length; i++) {
                     for (let j = i + 1; j < particles.length; j++) {
@@ -657,9 +749,9 @@
                         const dy = particles[i].y - particles[j].y;
                         const dist = Math.sqrt(dx * dx + dy * dy);
 
-                        if (dist < 80 + (intensity * 50)) {
+                        if (dist < 70 + (intensity * 40)) {
                             ctx.beginPath();
-                            ctx.strokeStyle = `rgba(168, 85, 247, ${ (0.2 * intensity) * (1 - dist/150) })`;
+                            ctx.strokeStyle = `rgba(168, 85, 247, ${ (0.2 * intensity) * (1 - dist/120) })`;
                             ctx.moveTo(particles[i].x, particles[i].y);
                             ctx.lineTo(particles[j].x, particles[j].y);
                             ctx.stroke();
@@ -676,9 +768,7 @@
             requestAnimationFrame(animate);
         }
 
-        // Start visualizer loop immediately
         animate();
-
     </script>
 </body>
 </html>
